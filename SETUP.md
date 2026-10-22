@@ -181,13 +181,12 @@ Or manually: fork on GitHub, then clone your fork.
 > files on the upstream **public** tracker, publishing whatever the issue contains
 > under your GitHub identity, on a repo where you cannot delete it (#389).
 
-> **Before you go further: forks are public.** GitHub cannot make a fork of a public
-> repository private, and `/setup` (section 6) writes your personal data into **tracked**
-> files — pushing those commits to a fork publishes them. If this copy is for your own
-> job search rather than for contributing, prefer a **private repository** with this repo
-> as `upstream`: see section 8, step 1 for the exact commands and why committing your
-> personalization there is still the right move. Everything else in this guide works
-> identically either way.
+> **Before you go further: forks are public.** Generated personal data stays
+> in gitignored working copies; `/setup` initializes them from `templates/setup/`.
+> Never force-add profiles or documents. See section 8 for private-remote options.
+
+Run `python3 tools/setup_workspace.py` after cloning, before compiling examples
+or running tests. `/setup` runs it automatically and preserves existing files.
 
 ## 3. Install job search CLI dependencies
 Run these from the repository root.
@@ -307,7 +306,14 @@ Upstream keeps improving the methodology files your fork has personalized, so pl
 
 **Prefer releases over raw `master`.** Tagged [releases](../../releases) are vetted checkpoints, each described in [CHANGELOG.md](CHANGELOG.md). Updating to a tag pulls a stable, documented state instead of whatever `master` happens to be mid-review. Fetch tags with `git fetch upstream --tags` and merge a release (for example `git merge v1.0.0`) when you want stability; pull `master` directly only when you specifically want the latest unreleased changes. The steps below apply either way - substitute the release tag for `upstream/master` where you see it.
 
-1. **Commit your personalization - but know where those commits land.** `/setup` edits CLAUDE.md and the profile skill files in place; those edits are *yours*, and committing them is what lets updates merge cleanly. But a GitHub **fork of this repo is public** - forks of public repositories cannot be made private - so anything you commit *and push to a fork* is visible to anyone. If you want your profile in a remote at all, don't push it to a fork: create a **private** repository, push there, and add this repo as the `upstream` remote (`git remote add upstream https://github.com/MadsLorentzen/ai-job-search.git`) to keep receiving updates. Committing locally without pushing is also fine. The genuinely sensitive files (tracker, salary data, `documents/`, application archives) are gitignored and never enter git either way. An uncommitted working tree is the most common reason `git pull` refuses to merge at all (`Your local changes ... would be overwritten`).
+1. **Keep personalization local.** `/setup` writes only ignored working copies.
+   Versioned originals live under `templates/setup/`. Do not force-add profiles,
+   documents, CVs, search queries, or backups. Before pulling upstream changes,
+   back up these local files outside Git. Updates to templates do not overwrite
+   existing copies; review and merge relevant changes manually. A public fork is
+   still public; if you need a private remote for other work, create a private
+   repository and keep the original repository as `upstream`.
+
 2. **Preview what changed before pulling:**
    ```bash
    git remote add upstream https://github.com/MadsLorentzen/ai-job-search.git   # first time only, if you cloned your own fork

@@ -1,0 +1,64 @@
+{
+  "type": "object",
+  "properties": {
+    "jobs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "company": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "posted_date": {
+            "type": "string"
+          },
+          "deadline": {
+            "type": "string"
+          },
+          "portal": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "fit": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "company",
+          "url",
+          "location",
+          "posted_date",
+          "deadline",
+          "portal",
+          "summary",
+          "fit"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "complete": {
+      "type": "boolean"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "jobs",
+    "complete",
+    "notes"
+  ],
+  "additionalProperties": false
+}

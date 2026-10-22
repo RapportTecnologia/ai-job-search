@@ -119,3 +119,20 @@ company_research/*.json
 
 # Brainstorm mockups (superpowers visual companion) - never ship
 .superpowers/
+
+# Autonomous Hub publisher: credentials, private configuration and durable queue
+.agenticspace/credentials.json
+automation/config.json
+automation/search.md
+automation/state/
+
+# Generated personal workspace; pristine originals live in templates/setup/.
+/.claude/skills/job-application-assistant/
+/.claude/skills/job-scraper/search-queries.md
+/CLAUDE.md
+/cv/main_example.tex
+/.local-backups/
+/.agenticspace/
+/job_scraper/portals.json
+/documents/**
+!/documents/.gitkeep

@@ -36,7 +36,7 @@ class CheckerRepoFixture(unittest.TestCase):
         tools.mkdir()
         shutil.copy(SCRIPT, tools / "check_framework_version.py")
 
-        self.skill_dir = self.root / ".claude" / "skills" / "job-application-assistant"
+        self.skill_dir = self.root / "templates" / "setup" / ".claude" / "skills" / "job-application-assistant"
         self.skill_dir.mkdir(parents=True)
         self.framework_file = self.skill_dir / "01-test-profile.md"
         self.framework_file.write_text(FRONTMATTER + BODY, encoding="utf-8")
@@ -134,8 +134,8 @@ class WindowsGitPathTests(unittest.TestCase):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         root = PureWindowsPath("C:/checkout")
-        profile = root / ".claude/skills/job-application-assistant/01-test-profile.md"
-        relative = ".claude/skills/job-application-assistant/01-test-profile.md"
+        profile = root / "templates/setup/.claude/skills/job-application-assistant/01-test-profile.md"
+        relative = "templates/setup/.claude/skills/job-application-assistant/01-test-profile.md"
         diff = '-framework_version: 1.0.0\n+framework_version: "1.0.0"\n-Old guidance\n+New guidance\n'
         with unittest.mock.patch.object(module, "ROOT", root), \
              unittest.mock.patch.object(module, "run_git", side_effect=[

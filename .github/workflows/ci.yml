@@ -48,6 +48,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install pyyaml
+      - run: python tools/setup_workspace.py
       - run: python tools/lint_skills.py
       - name: Framework version guard (upstream template only)
         if: github.repository == 'MadsLorentzen/ai-job-search'
@@ -63,6 +64,8 @@ jobs:
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.12"
+      - run: python tools/setup_workspace.py --check
+      - run: python tools/setup_workspace.py
       - run: python tools/security_guards.py
 
   python-tests:
@@ -81,6 +84,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install Excel integration test dependency
         run: python -m pip install openpyxl==3.1.5
+      - run: python tools/setup_workspace.py
       - run: python -m unittest discover -s tests -t . -v
 
   python-tests-windows:
@@ -100,6 +104,7 @@ jobs:
           python-version: "3.14"
       - name: Install Excel integration test dependency
         run: python -m pip install openpyxl==3.1.5
+      - run: python tools/setup_workspace.py
       - name: Run the suite under Git Bash
         shell: bash
         run: python -m unittest discover -s tests -t . -v
@@ -178,6 +183,7 @@ jobs:
             apt-get update
             apt-get install -y --no-install-recommends poppler-utils
           fi
+      - run: python3 tools/setup_workspace.py
       - name: Compile CV example (lualatex)
         run: |
           cd cv
@@ -275,6 +281,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           persist-credentials: false
+      - run: python3 tools/setup_workspace.py
       - name: Tracked template files must keep their placeholder tokens
         run: |
           fail=0

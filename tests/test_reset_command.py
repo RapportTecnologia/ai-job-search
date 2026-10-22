@@ -47,20 +47,9 @@ BASH = find_bash()
 
 
 def tracked_document_subfolders():
-    """Names of documents/ subfolders tracked in git (ignores local noise)."""
-    out = subprocess.run(
-        ["git", "ls-files", "documents/"],
-        cwd=REPO,
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout
-    folders = set()
-    for line in out.splitlines():
-        parts = line.split("/")
-        if len(parts) >= 3:  # documents/<subfolder>/<file...>
-            folders.add(parts[1])
-    return folders
+    """Default local folders now come from the initializer, not Git placeholders."""
+    from tools.setup_workspace import DOCUMENT_FOLDERS
+    return set(DOCUMENT_FOLDERS)
 
 
 class TestResetCoversEveryDocumentsSubfolder(unittest.TestCase):

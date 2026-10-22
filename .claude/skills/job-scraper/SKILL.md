@@ -60,7 +60,9 @@ If this fails (bun not installed), skip to **1c (WebSearch fallback)** for all p
 
 Discover all installed portal CLI skills by reading every `SKILL.md` found under `.agents/skills/*/SKILL.md`. Each file documents that portal's exact CLI flags and usage examples. **Use each portal's own documented interface — do not guess flags.** This approach automatically includes any new portals added via `/add-portal` without requiring changes to this file.
 
-**Honor the `enabled` toggle.** A portal is enabled unless its `SKILL.md` frontmatter sets `enabled: false` (a missing key means enabled — the default). Skip each disabled portal and record it for the Step 5 summary. A fork can thus keep a portal installed but sit out a run without deleting its directory.
+**Honor local portal overrides first.** If `job_scraper/portals.json` exists, read its JSON object mapping portal skill names to booleans. An explicit local value overrides that skill's `enabled` flag. Never modify portal skill files to configure a personal search.
+
+**Honor the `enabled` toggle when no local override exists.** A portal is enabled unless its `SKILL.md` frontmatter sets `enabled: false` (a missing key means enabled — the default). Skip each disabled portal and record it for the Step 5 summary. A fork can thus keep a portal installed but sit out a run without deleting its directory.
 
 For each **enabled** portal skill:
 

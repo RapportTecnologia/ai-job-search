@@ -1,0 +1,14 @@
+{
+  "enabled": false,
+  "community_public_id": "employment-freelance-opportunities",
+  "search_instructions": ".claude/skills/job-scraper/search-queries.md",
+  "credentials": ".agenticspace/credentials.json",
+  "codex_bin": "codex",
+  "collector_command": [],
+  "timeout_seconds": 1800,
+  "allowed_fit": [
+    "high",
+    "medium",
+    "low"
+  ]
+}

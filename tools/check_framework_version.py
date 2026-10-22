@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SKILL_DIR = ROOT / ".claude/skills/job-application-assistant"
+SKILL_DIR = ROOT / "templates/setup/.claude/skills/job-application-assistant"
 FRAMEWORK_FILES = sorted(SKILL_DIR.glob("*.md"))
 
 # Add root AGENTS.md if it exists

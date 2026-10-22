@@ -8,26 +8,37 @@ There are three paths into setup. Step 0 picks the right one; all three converge
 
 ## Step 0: Welcome & Choose Path
 
-If `$ARGUMENTS` contains `--section <name>`, skip directly to that section in Path C for an update-only flow. Do not run the path-selection prompt below.
+> **Windows:** run these tools as `python`, not `python3`.
 
-Otherwise, first check where this working copy would publish to — **before anything is
-written, not after** (the Step 4 privacy note fires only once every file is already on
-disk, which is too late to inform the decision). Run `git remote get-url origin`; if the
-command fails (no remote, or not a git checkout), skip this check silently. If there is
-a GitHub `origin`, check it with `gh repo view <owner/repo> --json visibility,isFork`
-when `gh` is available. If the origin is a **public fork** of the template — or its
-visibility cannot be determined — warn now and wait:
+Before any setup path, including `--section`, run:
 
-> **Heads-up before we start:** your `origin` points at `<owner/repo>`, which is a
-> public GitHub fork. This setup writes your personal data (name, contact details,
-> employment history, salary expectations) into **tracked** files, and anything you
-> commit *and push* to that fork is visible to anyone. Two safe options: keep your
-> profile commits local and never push them, or push to a **private** repository
-> instead — SETUP.md section 8 has the two-minute private-remote recipe. Want to
-> continue with the setup?
+```bash
+python3 tools/setup_workspace.py
+```
 
-Wait for the user's confirmation before showing the path prompt. A private origin, no
-origin, or a non-fork remote needs no warning — continue silently.
+If initialization fails, stop and report the error.
+The helper copies pristine files from `templates/setup/` to the same relative
+paths in the workspace **only when missing**. It verifies that destinations are
+ignored and no private paths are tracked. It never replaces existing user data.
+
+Treat `templates/setup/` as read-only during `/setup`. Collect answers and edit
+only the initialized local copies:
+
+| Versioned source (read only) | Local output (ignored by Git) |
+|---|---|
+| `templates/setup/.claude/skills/job-application-assistant/` | `.claude/skills/job-application-assistant/` |
+| `templates/setup/CLAUDE.md` | `CLAUDE.md` |
+| `templates/setup/cv/main_example.tex` | `cv/main_example.tex` |
+| `templates/setup/.claude/skills/job-scraper/search-queries.md` | `.claude/skills/job-scraper/search-queries.md` |
+| `templates/setup/documents/README.md` | `documents/README.md` |
+
+Do not modify tracked prompts, portal skill files, template originals, Git ignore
+rules or the Git index during setup. Never force-add outputs. `documents/` may
+contain arbitrary user subfolders; all content is local, except the repository's
+empty `documents/.gitkeep`. Do not delete user documents.
+
+If `$ARGUMENTS` contains `--section <name>`, proceed to that section in Path C
+for an update-only flow **after initialization**. Otherwise choose a path below.
 
 Then, before greeting the user, scan the `documents/` folder. Use Glob with `documents/**/*` and count files per subfolder (`cv/`, `linkedin/`, `diplomas/`, `references/`, `projects/`, `applications/`).
 
@@ -338,7 +349,11 @@ Ask about:
 - **Key skills as search terms:** "Which of your skills are most likely to appear in job postings?" Pick 3-5 that are distinctive and searchable.
 - **Target companies (optional):** "Are there specific companies you'd like to monitor for openings?"
 - **Geographic scope:** "Which cities or regions should I search in? How far are you willing to commute?" Use this to define the location filter tiers (ideal, acceptable, borderline, too far).
-- **Job portals:** "The framework ships country-agnostic search CLIs (`linkedin-search`, `freehire-search`, enabled by default) plus Danish portal demos (Jobindex, Jobbank, Jobdanmark, Jobnet) that ship **disabled**. `/scrape` auto-discovers whatever portal skills are installed under `.agents/skills/` and skips any with `enabled: false`. Which portals fit your market?" **Then act on the answer:** if the user's market is Denmark (or they ask for the Danish boards), edit each of the four Danish `SKILL.md` files and set `enabled: true` in the frontmatter; otherwise leave them disabled and say so - they cost nothing while disabled and can be enabled later by flipping the flag. If the user needs a local board that is not shipped, guide them to `/add-portal` (market-specific skills live in their fork). WebSearch/`site:` queries remain the fallback for portals without a CLI skill.
+- **Job portals:** "The framework ships country-agnostic search CLIs (`linkedin-search`, `freehire-search`, enabled by default) plus Danish portal demos (Jobindex, Jobbank, Jobdanmark, Jobnet) that ship **disabled**. `/scrape` auto-discovers whatever portal skills are installed under `.agents/skills/` and skips any with `enabled: false`. Which portals fit your market?" **Then act on the answer:** record per-portal overrides in the ignored
+  `job_scraper/portals.json` as a JSON object mapping skill names to booleans
+  (for example `{"jobnet-search": true}`). Do not edit `.agents/skills/`.
+  Missing overrides retain each skill's shipped `enabled` default. If a new
+  portal is needed, suggest `/add-portal` as a separate development task. WebSearch/`site:` queries remain the fallback for portals without a CLI skill.
 - **CV language:** "Should your CVs be written in English (the default, accepted in most markets), or in your market's language?" Record the answer as a `CV language: <language>` line in CLAUDE.md's Identity section. Cover letters always match each posting's language automatically; this setting governs the CV only. If the user is unsure, keep English and note they can re-run `/setup --section search` to change it.
 
 **Important:** Also suggest role types the user may not have considered, based on their skill profile. For example:
@@ -352,6 +367,7 @@ This proactive suggestion step helps users discover career paths they might not 
 
 ## Step 3: Generate Profile Files
 
+Use the local copies initialized in Step 0, never the originals in `templates/setup/`.
 Once data collection is complete, generate or finish populating the following files. **For Path A**, the seven skill files are already populated by Step A7; check each before writing and skip if its content is no longer placeholder text.
 
 ### 1. Update `CLAUDE.md`
@@ -399,6 +415,9 @@ Replace all placeholder tokens in the search queries file with the user's actual
 
 ## Step 4: Confirm & Next Steps
 
+Run `python3 tools/setup_workspace.py --check` to verify private outputs remain untracked.
+If it fails, report the problem instead of claiming setup is complete.
+
 Present a summary:
 
 > **Setup complete!** Here's what was generated:
@@ -413,10 +432,9 @@ Present a summary:
 > - `cv/main_example.tex` - Your LaTeX CV template
 > - `.claude/skills/job-scraper/search-queries.md` - Job search queries for `/scrape`
 >
-> **Privacy note:** the files above now contain your personal data and are *tracked by git*.
-> A GitHub fork of the template is always public (forks of public repos cannot be made
-> private), so do not push these commits to a fork. Keep them local, or push to a private
-> repository instead - see SETUP.md section 8 for the private-remote setup.
+> **Privacy note:** generated profiles, CVs, search queries and all user
+> documents are ignored by Git. Only pristine `templates/setup/` sources are
+> versioned. Never use `git add -f` on these local files.
 >
 > **Try it out:**
 > - Run `/scrape` to search for matching jobs right now

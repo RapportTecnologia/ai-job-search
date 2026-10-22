@@ -58,27 +58,15 @@ class TestForkWarningsAtTheDecisionPoint(unittest.TestCase):
         self.assert_warns(body, "SETUP.md")
 
 
-class TestSetupChecksOriginBeforeWriting(unittest.TestCase):
-    def test_preflight_exists_and_precedes_profile_generation(self):
+class TestSetupInitializesPrivateCopies(unittest.TestCase):
+    def test_initialization_precedes_all_setup_paths(self):
         text = SETUP_COMMAND.read_text(encoding="utf-8")
-        self.assertIn(
-            "git remote get-url origin",
-            text,
-            "/setup must check where the working copy would publish to",
-        )
-        preflight_at = text.index("git remote get-url origin")
-        writes_at = text.index("## Step 3: Generate Profile Files")
-        self.assertLess(
-            preflight_at,
-            writes_at,
-            "the origin check must run before any profile file is written - the "
-            "existing Step 4 note fires after everything is already on disk",
-        )
-        self.assertIn(
-            "public",
-            text[max(0, preflight_at - 2000) : preflight_at + 2000].lower(),
-            "the preflight must be about public visibility, not just remote presence",
-        )
+        self.assertLess(text.index("python3 tools/setup_workspace.py"),
+                        text.index("If `$ARGUMENTS` contains"))
+        self.assertIn("templates/setup/", text)
+        self.assertIn("only when missing", text)
+        self.assertIn("Do not modify tracked prompts", text)
+        self.assertIn("python3 tools/setup_workspace.py --check", text)
 
 
 if __name__ == "__main__":

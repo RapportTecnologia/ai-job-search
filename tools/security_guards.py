@@ -146,6 +146,12 @@ REQUIRED_DENY_RULES = [
 # Personal-data ignore rules that must never disappear from .gitignore.
 REQUIRED_IGNORE_RULES = [
     "salary_data.json",
+    "/.claude/skills/job-application-assistant/",
+    "/.claude/skills/job-scraper/search-queries.md",
+    "/CLAUDE.md",
+    "/documents/**",
+    "/.local-backups/",
+    "/.agenticspace/",
     # Depth-independent: the job-scraper skill resolves `job_scraper/` relative
     # to its own directory, so the state file lands under .claude/skills/... and
     # a repo-rooted rule silently fails to match it.
@@ -155,7 +161,7 @@ REQUIRED_IGNORE_RULES = [
     "*_BehavioralReport.pdf",
     "linkedin_Profile.pdf",
     "cv/main_*.*",
-    "!cv/main_example.tex",
+    "/cv/main_example.tex",
     # ATS text extractions (/apply step 5d) carry the CV's full text.
     "cv/*.txt",
     "cover_letters/cover_*.*",
@@ -207,6 +213,7 @@ ALLOWED_IGNORE_NEGATIONS = {
     "!cv/main_example.tex",
     "!cover_letters/cover_example.tex",
     "!documents/**/.gitkeep",
+    "!/documents/.gitkeep",
 }
 
 # Hook commands the template legitimately ships, as "<Event>:<command>" strings.
