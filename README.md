@@ -258,7 +258,9 @@ fica em `automation/state/`, ignorado pelo Git. A fila SQLite deduplica por URL
 e empresa/cargo, preserva pendências entre execuções e só marca publicação após
 `status: confirmed`. Credenciais e temperature são relidas a cada chamada;
 redirecionamentos são recusados e a chave só vai para a API oficial. Respeita
-cooldowns 429 e limita chamadas a menos de 30 por minuto. Posts contêm apenas
+`Retry-After`/cooldowns 429 com margem de segurança e limita chamadas a cerca de
+20 por minuto. Aguarda até cinco horas por execução; esperas maiores ficam
+registradas como adiadas e retomam da fila na próxima execução. Posts contêm apenas
 campos públicos da vaga e o link original, sem perfil ou justificativa pessoal.
 
 Uma falha de rede durante escrita pode deixar `*_uncertain`: a fila para para

@@ -130,6 +130,76 @@ class PublisherTests(unittest.TestCase):
         self.assertGreater(float(self.db.execute("SELECT value FROM meta WHERE key='retry_after'").fetchone()[0]), has.time.time() + 86000)
 
 
+class HeartbeatTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.folder = Path(self.tmp.name)
+        self.db = has.connect(self.folder / 'queue.db')
+        self.addCleanup(self.db.close)
+
+    def test_optional_probe_auth_and_missing_route_do_not_block_heartbeat(self):
+        class Hub:
+            def call(self, path):
+                if path == '/agents/me':
+                    return {'data': {'id': 'ai-job-search'}}
+                if path == '/auth/accounts':
+                    raise has.HubError(401)
+                if path == '/agents/me/posts?limit=50':
+                    raise has.HubError(404)
+                return {'data': {'ok': True}}
+
+        class Response:
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self, _limit): return b'# heartbeat\n'
+
+        class Opener:
+            def open(self, *_args, **_kwargs): return Response()
+
+        with patch.object(has, 'build_opener', return_value=Opener()):
+            has.heartbeat(self.db, Hub(), self.folder)
+
+        checks = json.loads((self.folder / 'heartbeat-checks.json').read_text())
+        self.assertEqual(checks['/auth/accounts'], {'status': 'unavailable', 'http_status': 401})
+        self.assertEqual(checks['/agents/me/posts?limit=50'], {'status': 'unavailable', 'http_status': 404})
+        self.assertEqual(json.loads((self.folder / 'heartbeat-status.json').read_text())['status'], 'success')
+        self.assertIsNotNone(self.db.execute("SELECT value FROM meta WHERE key='heartbeat'").fetchone())
+
+    def test_agent_identity_auth_failure_still_stops_heartbeat(self):
+        class Hub:
+            def call(self, path):
+                raise has.HubError(401)
+
+        class Response:
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self, _limit): return b'# heartbeat\n'
+
+        class Opener:
+            def open(self, *_args, **_kwargs): return Response()
+
+        with patch.object(has, 'build_opener', return_value=Opener()):
+            with self.assertRaises(has.HubError):
+                has.heartbeat(self.db, Hub(), self.folder)
+        self.assertEqual(json.loads((self.folder / 'heartbeat-status.json').read_text())['status'], 'error')
+
+
+class CooldownTests(unittest.TestCase):
+    def test_persisted_deadline_has_margin_and_waits_after_expiry(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with has.connect(Path(folder) / 'queue.db') as db:
+                before = has.time.time()
+                deadline = has.persist_cooldown(db, 60)
+                self.assertGreaterEqual(deadline, before + 60)
+                with patch.object(has.time, 'time', return_value=deadline), patch.object(has.time, 'sleep') as sleep:
+                    allowed, waited = has.wait_for_cooldown(db)
+                self.assertTrue(allowed)
+                self.assertEqual(waited, has.COOLDOWN_SAFETY_SECONDS + 1)
+                sleep.assert_called_once_with(has.COOLDOWN_SAFETY_SECONDS + 1)
+                self.assertIsNone(db.execute("SELECT value FROM meta WHERE key='retry_after'").fetchone())
+
+
 @unittest.skipUnless(os.name == "posix", "Daily runner uses Linux file locking")
 class RunnerTests(unittest.TestCase):
     def setUp(self):
@@ -159,6 +229,41 @@ class RunnerTests(unittest.TestCase):
             self.assertEqual(db.execute('SELECT stage FROM jobs').fetchone()[0], 'confirmed')
         self.assertFalse(json.loads((self.root / 'config.json').read_text())['enabled'])
 
+    def test_write_429_waits_out_countdown_then_resumes_same_queue_item(self):
+        real_call = self.hub.call
+        rate_limited = {'once': False}
+
+        def call_with_one_rate_limit(path, payload=None):
+            if path == '/posts/request-authorization' and not rate_limited['once']:
+                rate_limited['once'] = True
+                raise has.HubError(429, 60)
+            return real_call(path, payload)
+
+        self.hub.call = call_with_one_rate_limit
+
+        def fast_wait(db, already_waited=0):
+            db.execute("DELETE FROM meta WHERE key='retry_after'")
+            db.commit()
+            return True, already_waited + 76
+
+        with patch.object(has, 'wait_for_cooldown', side_effect=fast_wait):
+            self.assertEqual(has.run(self.args), 0)
+        with has.connect(self.root / 'automation/state/queue.sqlite3') as db:
+            self.assertEqual(db.execute('SELECT stage FROM jobs').fetchone()[0], 'confirmed')
+        self.assertEqual(json.loads((self.root / 'automation/state/last-run.json').read_text())['status'], 'success')
+
+    def test_heartbeat_429_is_persisted_and_deferred_without_systemd_failure(self):
+        too_long = 6 * 3600
+        with patch.object(has, 'heartbeat', side_effect=has.HubError(429, too_long)):
+            self.assertEqual(has.run(self.args), 0)
+        with has.connect(self.root / 'automation/state/queue.sqlite3') as db:
+            retry = db.execute("SELECT value FROM meta WHERE key='retry_after'").fetchone()
+            self.assertIsNotNone(retry)
+            self.assertGreater(float(retry[0]), has.time.time() + too_long)
+        status = json.loads((self.root / 'automation/state/last-run.json').read_text())
+        self.assertEqual(status['status'], 'deferred')
+        self.assertTrue(self.args.input.exists())
+
     def test_disabled_timer_never_publishes(self):
         self.args.once = False
         self.assertEqual(has.run(self.args), 0)
@@ -181,6 +286,20 @@ class RunnerTests(unittest.TestCase):
 
     def test_collect_resumes_persisted_batch_before_reading_configuration(self):
         self.assertEqual(has.collect({}), self.batch)
+
+    def test_collect_archives_incomplete_batch_and_retries(self):
+        self.batch['complete'] = False
+        self.args.input.write_text(json.dumps(self.batch))
+        (self.root / 'search.md').write_text('Search the configured roles and locations.')
+        fresh = dict(self.batch, complete=True)
+        with patch.object(has, 'codex', return_value=fresh) as codex:
+            result = has.collect({'search_instructions': 'search.md'})
+        self.assertEqual(result, fresh)
+        codex.assert_called_once()
+        self.assertFalse(self.args.input.exists())
+        archives = list((self.args.input.parent / 'incomplete').glob('scrape-batch-*.json'))
+        self.assertEqual(len(archives), 1)
+        self.assertFalse(json.loads(archives[0].read_text())['complete'])
 
     def test_incomplete_setup_is_blocked(self):
         self.args.input.unlink()

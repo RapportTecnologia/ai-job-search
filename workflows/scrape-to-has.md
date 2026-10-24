@@ -23,9 +23,12 @@ Python helper: never print `.agenticspace/credentials.json` or pass its key to a
 
 ## Collection phase (shared by Claude and scheduled Codex)
 
-1. If `automation/state/scrape-batch.json` already exists, resume publishing that
-   batch first. Do not replace it or rerun collection over it. A scheduled Codex
-   **collection-only** invocation returns this batch instead of publishing it.
+1. If `automation/state/scrape-batch.json` already exists and is complete, resume
+   publishing that batch first; do not replace it or rerun collection over it. If
+   it has `complete: false`, preserve it under `automation/state/incomplete/` with
+   a timestamp and start a fresh collection. Never publish the archived batch.
+   A scheduled Codex **collection-only** invocation returns a complete pending
+   batch instead of publishing it.
    A `--dry-run` must only validate an existing batch, never publish it.
    For a new dry-run, use `automation/state/scrape-preview.json` instead of the
    batch path throughout collection. The daily collector must ignore this preview.
@@ -45,10 +48,15 @@ Python helper: never print `.agenticspace/credentials.json` or pass its key to a
    strings are empty, not invented. `summary` is a public factual summary only.
    Never include private fit reasoning or candidate data. The original richer
    entries (including source/status/first_seen) still go to `scrape_state.py store`.
-4. If a source fails, use the canonical fallback and report it in notes. If no
-   fallback completes that source, set `complete: false`; do not store that batch
-   as seen or publish it. Explain the incomplete run. Resume collection explicitly
-   after the failure is resolved; never claim a failed source has zero vacancies.
+4. If a configured portal/category search fails as a whole, use the canonical
+   fallback and report it in notes. If no fallback completes that source, set
+   `complete: false`; do not store that batch as seen or publish it. Explain the
+   incomplete run; the next scheduled run archives the incomplete handoff and
+   retries collection. Never claim a failed source has zero vacancies. A detail
+   fetch failure for an individual posting is candidate-level: exclude that
+   posting (record `status: "unreachable"` if its details were fetched), report
+   it in notes, and continue with other verified postings. It does not make a
+   successfully searched portal incomplete by itself.
 5. In `--dry-run`, validate the batch using the command below but **skip Step 4's
    seen-history write**. Keep the preview batch for a subsequent explicit publish.
 6. Otherwise finish `/scrape` storage and its report. Do not run `/apply`, send
@@ -78,6 +86,11 @@ python3 tools/scrape_to_has.py run --once --input automation/state/scrape-batch.
 The helper durably enqueues the batch before removing the handoff file, then
 performs request-authorization → create → confirm for **each vacancy separately**.
 Only `confirmed` is a publication. A persisted queue is resumed before new work.
+API calls are spaced below the documented write limit. On HTTP 429, persist the
+server's `Retry-After`/cooldown deadline plus a safety margin, wait before the
+next request, and continue the same queue item. A cooldown that would exceed the
+five-hour per-run wait budget is reported as deferred; leave the queue intact for
+the next scheduled run. Never retry at the exact countdown boundary.
 If the input batch was already acknowledged but posting failed, resume with:
 
 ```bash
