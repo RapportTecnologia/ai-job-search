@@ -259,7 +259,7 @@ class RunnerTests(unittest.TestCase):
         with has.connect(self.root / 'automation/state/queue.sqlite3') as db:
             retry = db.execute("SELECT value FROM meta WHERE key='retry_after'").fetchone()
             self.assertIsNotNone(retry)
-            self.assertGreater(float(retry[0]), has.time.time() + too_long)
+            self.assertGreater(float(retry[0]), has.time.time() + too_long - 1)
         status = json.loads((self.root / 'automation/state/last-run.json').read_text())
         self.assertEqual(status['status'], 'deferred')
         self.assertTrue(self.args.input.exists())

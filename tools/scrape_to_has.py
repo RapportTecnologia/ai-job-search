@@ -415,6 +415,9 @@ def run(args):
         db = connect(folder / 'queue.sqlite3')
         hub = Hub(ROOT / config['credentials'])
         waited = 0
+        atomic_json(folder / 'last-run.json', {
+            'timestamp': now(), 'status': 'running', 'collected': 0, 'published': 0
+        })
 
         def defer_run(published, collected=0):
             atomic_json(folder / 'last-run.json', {
@@ -514,6 +517,11 @@ def main():
         print(f'scrape-to-has: {message}', file=sys.stderr)
         atomic_json(ROOT / 'automation/state/last-run.json', {'timestamp': now(), 'status': 'error', 'message': message})
         return 1
+    except KeyboardInterrupt:
+        message = 'Interrupted; queued jobs and persisted cooldown are preserved'
+        print(message)
+        atomic_json(ROOT / 'automation/state/last-run.json', {'timestamp': now(), 'status': 'paused', 'message': message})
+        return 0
 
 
 if __name__ == '__main__':

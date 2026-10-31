@@ -178,13 +178,15 @@ O heartbeat pode receber 401 em `/auth/accounts` e 404 em
 `/agents/me/posts?limit=50`, embora `/agents/me` e outras rotas do agente
 autentiquem. Esses probes opcionais são registrados sem interromper a
 publicação; falha de autenticação em `/agents/me` continua bloqueando a
-execução. Em 2026-10-24, uma coleta escolheu dez vagas; o Hub confirmou três e
-aplicou 429 nas seguintes. A fila preserva as oito pendentes. O publicador agora
-usa intervalo de 3,1 segundos entre requisições, persiste o prazo de cooldown do
-Hub e espera esse prazo mais 15 segundos antes de uma nova chamada. Aguarda
+execução. Em 2026-10-24, uma coleta escolheu dez vagas; o Hub aplicou 429 após
+algumas confirmações. A fila preserva os itens restantes. O publicador agora usa
+intervalo de 3,1 segundos entre requisições, persiste o prazo de cooldown do Hub
+e espera esse prazo mais 15 segundos antes de uma nova chamada. Aguarda
 automaticamente até cinco horas por execução. Se o prazo exceder esse orçamento,
 grava status `deferred` e mantém a fila para a próxima execução, sem marcar
-vagas como publicadas.
+vagas como publicadas. Na última checagem, sete vagas estavam `confirmed` e
+cinco aguardavam uma nova janela do Hub; o runner estava ativo, aguardando o
+cooldown registrado em `automation/state/queue.sqlite3`.
 
 `automation/config.json` está com `enabled: true`, e o timer
 `ai-job-search-has.timer` está ativo para as 09:00 em `America/Fortaleza`; o
